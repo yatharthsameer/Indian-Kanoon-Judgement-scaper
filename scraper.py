@@ -41,10 +41,18 @@ class IndianKanoonScraper:
             raise
 
     def load_checkpoint(self):
-        """Load the last saved checkpoint"""
+        """Load the last saved checkpoint safely, handling empty or corrupted files."""
         if os.path.exists(self.checkpoint_file):
-            with open(self.checkpoint_file, "r") as f:
-                return json.load(f)
+            try:
+                if os.stat(self.checkpoint_file).st_size == 0:
+                    raise ValueError("Checkpoint file is empty, resetting checkpoint.")
+
+                with open(self.checkpoint_file, "r") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, ValueError):
+                self.logger.warning("Checkpoint file is empty or corrupted. Resetting checkpoint.")
+
+        # Return default checkpoint if file is empty or missing
         return {
             "last_court": None,
             "last_year": None,
@@ -58,18 +66,27 @@ class IndianKanoonScraper:
             "last_court": court,
             "last_year": year,
             "last_month": month,
-            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
             "processed_courts": self.get_processed_courts(),
         }
         with open(self.checkpoint_file, "w") as f:
             json.dump(checkpoint, f, indent=2)
 
     def get_processed_courts(self):
-        """Get list of fully processed courts"""
-        if os.path.exists(self.output_file):
+        """Get list of fully processed courts, handling missing or empty files gracefully."""
+        if not os.path.exists(self.output_file) or os.stat(self.output_file).st_size == 0:
+            self.logger.warning(f"{self.output_file} is missing or empty. No processed courts.")
+            return []
+
+        try:
             df = pd.read_csv(self.output_file)
+            if "court" not in df.columns:
+                self.logger.warning(f"{self.output_file} does not contain the expected 'court' column.")
+                return []
             return df["court"].unique().tolist()
-        return []
+
+        except pd.errors.EmptyDataError:
+            self.logger.warning(f"{self.output_file} is empty or corrupted. No processed courts.")
+            return []
 
     def save_links_batch(self, links, mode="a"):
         """Save a batch of links to CSV"""
@@ -110,30 +127,25 @@ class IndianKanoonScraper:
         self.logger.info(
             f"Opening {url} with automatic reconnect to bypass Cloudflare..."
         )
-        sb.uc_open_with_reconnect(url, 3)  # Try multiple reconnect attempts
+        sb.uc_open_with_reconnect(url, 3)
 
         try:
-            # Check if redirection has already happened (successful verification)
-            for _ in range(10):  # Retry for a few seconds
+            for _ in range(10):
                 if "indiankanoon.org" in sb.get_current_url():
-                    self.logger.info("Successfully bypassed Cloudflare! Proceeding...")
-                    return  # Exit function if we are on the correct page
+                    self.logger.info("Successfully bypassed Cloudflare!")
+                    return
                 time.sleep(1)
 
-            # If still on verification page, try interacting
             if sb.is_element_visible('input[value*="Verify"]'):
-                self.logger.info("Clicking on Cloudflare verification checkbox...")
+                self.logger.info("Clicking Cloudflare verification checkbox...")
                 sb.uc_click('input[value*="Verify"]')
-                time.sleep(5)  # Give time for verification
+                time.sleep(5)
 
             elif sb.is_element_visible("iframe"):
-                self.logger.info(
-                    "Detected an iframe. Attempting to switch and solve CAPTCHA..."
-                )
+                self.logger.info("Detected an iframe, solving CAPTCHA...")
                 sb.uc_gui_click_captcha()
-                time.sleep(5)  # Allow some time for CAPTCHA processing
+                time.sleep(5)
 
-            # Check final verification (allowing longer time)
             sb.wait_for_element_visible('img[alt="Indian Kanoon"]', timeout=15)
             self.logger.info("Page loaded successfully after Cloudflare verification.")
 
@@ -141,8 +153,8 @@ class IndianKanoonScraper:
             self.logger.error(f"Cloudflare detection failed: {str(e)}")
             raise Exception("Cloudflare detected the bot!")
 
-    def process_month_page(self, sb, month_data, court_data):
-        """Process all judgment links for a month"""
+    def process_month_page(self, sb, month_data, court_data, year):
+        """Process all judgment links for a month."""
         self.logger.info(f"Processing {month_data['name']}...")
         current_url = month_data["url"]
         month_links = []
@@ -160,7 +172,7 @@ class IndianKanoonScraper:
                         links.append(
                             {
                                 "court": court_data["court"],
-                                "year": self.start_year,  # Update dynamically if needed
+                                "year": year,  # ✅ Explicitly passing year
                                 "month": month_data["name"],
                                 "title": text,
                                 "url": href,
@@ -183,7 +195,7 @@ class IndianKanoonScraper:
 
                 if next_page:
                     current_url = next_page
-                    time.sleep(2)  # Be polite to the server
+                    time.sleep(2)
                 else:
                     if month_links:
                         self.save_links_batch(month_links)
@@ -211,7 +223,15 @@ class IndianKanoonScraper:
                 return
 
             for month_data in month_links:
-                self.process_month_page(sb, month_data, court_data)
+                if (
+                    checkpoint["last_month"]
+                    and month_data["name"] != checkpoint["last_month"]
+                ):
+                    continue
+                checkpoint["last_month"] = None
+
+                self.process_month_page(sb, month_data, court_data, year)
+
                 self.save_checkpoint(court_data["court"], year, month_data["name"])
 
     def scrape_all(self):
@@ -225,11 +245,16 @@ class IndianKanoonScraper:
             ]
 
         for _, court in courts_df.iterrows():
+            if checkpoint["last_court"] and court["court"] != checkpoint["last_court"]:
+                continue
+            checkpoint["last_court"] = None
+
             self.logger.info(f"\nProcessing court: {court['court']}")
 
             for year in range(self.start_year, self.end_year + 1):
-                if checkpoint["last_year"] and year <= checkpoint["last_year"]:
+                if checkpoint["last_year"] and year != checkpoint["last_year"]:
                     continue
+                checkpoint["last_year"] = None
 
                 self.process_year(court, year, checkpoint)
                 self.save_checkpoint(court["court"], year, None)

@@ -1,6 +1,17 @@
 {
-  "last_court": "Supreme Court of India",
-  "last_year": 2021,
-  "last_month": null,
-  "processed_courts": []
+  "Supreme Court - Daily Orders": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Calcutta High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Delhi High Court - Orders": {
+    "last_year": 2021,
+    "last_month": "December",
+    "is_done": false
+  }
 }

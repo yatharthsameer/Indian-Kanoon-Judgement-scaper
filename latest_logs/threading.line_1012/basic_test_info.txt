@@ -1,0 +1,60 @@
+threading.py:1012:SB
+--------------------------------------------------------------------
+Last Page: [WARNING! Browser Not Open!]
+ Duration: 93.86s
+  Browser: Chrome 133.0.6943.127
+   Driver: chromedriver 133.0.6943.98
+Timestamp: 1740278985  (Unix Timestamp)
+     Date: Sunday, 23 February 2025
+     Time: 8:19:45 AM  (IST, UTC+05:30)
+--------------------------------------------------------------------
+Traceback:
+  Traceback (most recent call last):
+  File "/Users/sameer/Desktop/MTP/scraper.py", line 228, in scrape_court
+    self.bypass_cloudflare(sb, year_url)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/sameer/Desktop/MTP/scraper.py", line 85, in bypass_cloudflare
+    sb.uc_open_with_reconnect(url, 3)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/seleniumbase/core/browser_launcher.py", line 5310, in <lambda>
+    lambda *args, **kwargs: uc_open_with_reconnect(
+                            ~~~~~~~~~~~~~~~~~~~~~~^
+        driver, *args, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/seleniumbase/core/browser_launcher.py", line 490, in uc_open_with_reconnect
+    driver.execute_script(script)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/webdriver.py", line 528, in execute_script
+    return self.execute(command, {"script": script, "args": converted_args})["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/webdriver.py", line 429, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.NoSuchWindowException: Message: no such window: target window already closed
+from unknown error: web view not found
+  (Session info: chrome=133.0.6943.127)
+Stacktrace:
+0   uc_driver                           0x0000000103441d98 uc_driver + 5954968
+1   uc_driver                           0x00000001034399ca uc_driver + 5921226
+2   uc_driver                           0x0000000102ef95e0 uc_driver + 415200
+3   uc_driver                           0x0000000102ecd475 uc_driver + 234613
+4   uc_driver                           0x0000000102f795ae uc_driver + 939438
+5   uc_driver                           0x0000000102f97d4c uc_driver + 1064268
+6   uc_driver                           0x0000000102f70de3 uc_driver + 904675
+7   uc_driver                           0x0000000102f3cc6a uc_driver + 691306
+8   uc_driver                           0x0000000102f3ddc1 uc_driver + 695745
+9   uc_driver                           0x0000000103404e50 uc_driver + 5705296
+10  uc_driver                           0x0000000103408da0 uc_driver + 5721504
+11  uc_driver                           0x00000001033e6797 uc_driver + 5580695
+12  uc_driver                           0x000000010340982b uc_driver + 5724203
+13  uc_driver                           0x00000001033d4fc4 uc_driver + 5509060
+14  uc_driver                           0x0000000103428088 uc_driver + 5849224
+15  uc_driver                           0x000000010342824f uc_driver + 5849679
+16  uc_driver                           0x00000001034395a8 uc_driver + 5920168
+17  libsystem_pthread.dylib             0x00007ff8184f4253 _pthread_start + 99
+18  libsystem_pthread.dylib             0x00007ff8184efbef thread_start + 15
+

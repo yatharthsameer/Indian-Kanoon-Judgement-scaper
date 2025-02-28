@@ -10,8 +10,28 @@
     "is_done": true
   },
   "Delhi High Court - Orders": {
-    "last_year": 2021,
+    "last_year": 2024,
     "last_month": "December",
+    "is_done": true
+  },
+  "Chattisgarh High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Himachal Pradesh High Court": {
+    "last_year": 2022,
+    "last_month": "May",
     "is_done": false
+  },
+  "Gauhati High Court": {
+    "last_year": 2024,
+    "last_month": "April",
+    "is_done": true
+  },
+  "Gujarat High Court": {
+    "last_year": 2023,
+    "last_month": "October",
+    "is_done": true
   }
 }

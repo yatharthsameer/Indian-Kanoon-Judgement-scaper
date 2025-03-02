@@ -33,5 +33,20 @@
     "last_year": 2023,
     "last_month": "October",
     "is_done": true
+  },
+  "Calcutta High Court - Appellate Side": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Delhi High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Jharkhand High Court": {
+    "last_year": 2021,
+    "last_month": "September",
+    "is_done": false
   }
 }

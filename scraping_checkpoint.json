@@ -9,6 +9,11 @@
     "last_month": "December",
     "is_done": true
   },
+  "Allahabad High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
   "Delhi High Court - Orders": {
     "last_year": 2024,
     "last_month": "December",
@@ -45,9 +50,54 @@
     "is_done": true
   },
   "Karnataka High Court": {
-    "last_year": 2021,
-    "last_month": "January",
-    "is_done": false
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Madras High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Kerala High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Manipur High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Meghalaya High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Orissa High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Patna High Court - Orders": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Sikkim High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Tripura High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Uttar Pradesh High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
   },
   "Jammu & Kashmir High Court": {
     "last_year": 2024,
@@ -74,7 +124,6 @@
     "last_month": "December",
     "is_done": true
   },
- 
   "Punjab-Haryana High Court": {
     "last_year": 2024,
     "last_month": "December",
@@ -95,14 +144,24 @@
     "last_month": "September",
     "is_done": false
   },
-  "Rajasthan High Court": {
-    "last_year": 2024,
-    "last_month": "December",
-    "is_done": true
-  },
   "Supreme Court of India": {
     "last_year": 2020,
     "last_month": "January",
+    "is_done": false
+  },
+  "Patna High Court": {
+    "last_year": 2020,
+    "last_month": "January",
+    "is_done": false
+  },
+  "Rajasthan High Court - Jaipur": {
+    "last_year": 2020,
+    "last_month": "March",
+    "is_done": true
+  },
+  "Rajasthan High Court - Jodhpur": {
+    "last_year": 2024,
+    "last_month": "December",
     "is_done": true
   }
 }

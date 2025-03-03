@@ -10,7 +10,7 @@ from seleniumbase import SB  # or "from seleniumbase import BaseCase" if needed
 
 
 class IndianKanoonScraper:
-    def __init__(self, start_year=2020, end_year=2024, max_workers=5):
+    def __init__(self, start_year=2020, end_year=2024, max_workers=4):
         self.start_year = start_year
         self.end_year = end_year
         self.checkpoint_file = "scraping_checkpoint.json"
@@ -250,21 +250,24 @@ class IndianKanoonScraper:
         except Exception as ex:
             self.logger.error(f"[{court_name}] Critical error: {str(ex)}")
 
+
     def scrape_all(self):
         """
         Main scraping function:
         1) Read 'court_links.csv'
-        2) Prioritize undone courts
-        3) Spawn up to max_workers threads
-        4) Handle Ctrl+C (KeyboardInterrupt) gracefully
+        2) Load checkpoint
+        3) Filter out courts that are is_done == True (to avoid pointless tasks)
+        4) Spawn up to self.max_workers threads
+        5) Handle Ctrl+C (KeyboardInterrupt) gracefully
         """
-        # First, read the court links
+
+        # 1. Read the court links
         courts_df = pd.read_csv("court_links.csv")
 
-        # Load checkpoint so we can see which are done vs. not done
+        # 2. Load the checkpoint to see which courts are done
         checkpoint_data = self.load_checkpoint()
 
-        # Tag each row with is_done status from the checkpoint
+        # 3. Filter out or tag "is_done" courts
         def is_done_for_row(row):
             c_name = row["court"]
             if c_name not in checkpoint_data:
@@ -273,45 +276,41 @@ class IndianKanoonScraper:
 
         courts_df["is_done"] = courts_df.apply(is_done_for_row, axis=1)
 
-        # Sort so that is_done == False appear first
-        courts_df = courts_df.sort_values(by="is_done", ascending=True)
+        # We'll keep only undone courts, so we never schedule tasks for done ones:
+        undone_df = courts_df[courts_df["is_done"] == False]
 
         self.logger.info(
             f"Total Courts: {len(courts_df)}. "
-            f"Undone: {len(courts_df[courts_df['is_done'] == False])}, "
-            f"Done: {len(courts_df[courts_df['is_done'] == True])}"
+            f"Undone: {len(undone_df)}, "
+            f"Done: {len(courts_df) - len(undone_df)}"
         )
 
-        # Optionally filter out the done courts so we don't even schedule them:
-        # courts_df = courts_df[courts_df['is_done'] == False]
-
-        # We'll catch KeyboardInterrupt so we can gracefully shut down
+        # 4. Spawn threads
         executor = ThreadPoolExecutor(max_workers=self.max_workers)
         futures = []
         try:
-            # Submit tasks
-            for _, row in courts_df.iterrows():
-                futures.append(executor.submit(self.scrape_court, row))
+            # Schedule tasks only for undone courts
+            for _, row in undone_df.iterrows():
+                future = executor.submit(self.scrape_court, row)
+                futures.append(future)
+                time.sleep(5)
 
-            # As tasks complete, we can catch exceptions
+            # As tasks complete, catch exceptions
             for f in as_completed(futures):
-                try:
-                    f.result()
-                except Exception as e:
-                    self.logger.error(f"Threaded task error: {str(e)}")
+                f.result()  # Will re-raise any uncaught exception inside scrape_court()
+
         except KeyboardInterrupt:
             self.logger.info("CTRL+C detected! Attempting graceful shutdown...")
-            # Optionally, cancel any outstanding futures
+            # Cancel any tasks that are still queued or running
             for f in futures:
                 f.cancel()
+
         finally:
-            # Shutdown the executor, waiting on tasks that aren’t cancelled
+            # 5. Shutdown the executor
             executor.shutdown(wait=False)
-            # We could do a final checkpoint save if needed
-            # But since we save after each month, we’re likely good:
             self.logger.info("Shutdown complete. Checkpoints should be up to date.")
 
 
 if __name__ == "__main__":
-    scraper = IndianKanoonScraper(start_year=2020, end_year=2024, max_workers=2)
+    scraper = IndianKanoonScraper(start_year=2020, end_year=2024, max_workers=4)
     scraper.scrape_all()

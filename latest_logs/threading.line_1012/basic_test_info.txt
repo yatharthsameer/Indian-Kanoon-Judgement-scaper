@@ -1,60 +1,133 @@
 threading.py:1012:SB
 --------------------------------------------------------------------
 Last Page: [WARNING! Browser Not Open!]
- Duration: 93.86s
-  Browser: Chrome 133.0.6943.127
+ Duration: 18.36s
+  Browser: Chrome 133.0.6943.142 / headless
    Driver: chromedriver 133.0.6943.98
-Timestamp: 1740278985  (Unix Timestamp)
-     Date: Sunday, 23 February 2025
-     Time: 8:19:45 AM  (IST, UTC+05:30)
+Timestamp: 1740916073  (Unix Timestamp)
+     Date: Sunday, 2 March 2025
+     Time: 5:17:53 PM  (IST, UTC+05:30)
 --------------------------------------------------------------------
 Traceback:
   Traceback (most recent call last):
-  File "/Users/sameer/Desktop/MTP/scraper.py", line 228, in scrape_court
-    self.bypass_cloudflare(sb, year_url)
-    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
-  File "/Users/sameer/Desktop/MTP/scraper.py", line 85, in bypass_cloudflare
-    sb.uc_open_with_reconnect(url, 3)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
-  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/seleniumbase/core/browser_launcher.py", line 5310, in <lambda>
-    lambda *args, **kwargs: uc_open_with_reconnect(
-                            ~~~~~~~~~~~~~~~~~~~~~~^
-        driver, *args, **kwargs
-        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connection.py", line 174, in _new_conn
+    conn = connection.create_connection(
+        (self._dns_host, self.port), self.timeout, **extra_kw
+    )
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/util/connection.py", line 95, in create_connection
+    raise err
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 61] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 716, in urlopen
+    httplib_response = self._make_request(
+        conn,
+    ...<5 lines>...
+        chunked=chunked,
+    )
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 416, in _make_request
+    conn.request(method, url, **httplib_request_kw)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connection.py", line 244, in request
+    super(HTTPConnection, self).request(method, url, body=body, headers=headers)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/http/client.py", line 1338, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/http/client.py", line 1384, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/http/client.py", line 1333, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/http/client.py", line 1093, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/http/client.py", line 1037, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connection.py", line 205, in connect
+    conn = self._new_conn()
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connection.py", line 186, in _new_conn
+    raise NewConnectionError(
+        self, "Failed to establish a new connection: %s" % e
+    )
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x12fd1f200>: Failed to establish a new connection: [Errno 61] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/sameer/Desktop/MTP/scraper.py", line 231, in scrape_court
+    month_links = self.get_month_links(sb)
+  File "/Users/sameer/Desktop/MTP/scraper.py", line 74, in get_month_links
+    for link in sb.find_elements("tag name", "a"):
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/seleniumbase/fixtures/base_case.py", line 2198, in find_elements
+    elements = self.driver.find_elements(by=by, value=selector)
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/seleniumbase/core/sb_driver.py", line 37, in find_elements
+    return self.driver.default_find_elements(by=by, value=value)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/webdriver.py", line 926, in find_elements
+    return self.execute(Command.FIND_ELEMENTS, {"using": by, "value": value})["value"] or []
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/webdriver.py", line 427, in execute
+    response = self.command_executor.execute(driver_command, params)
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/remote_connection.py", line 404, in execute
+    return self._request(command_info[0], url, body=data)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/remote_connection.py", line 428, in _request
+    response = self._conn.request(method, url, body=body, headers=headers, timeout=self._client_config.timeout)
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/request.py", line 81, in request
+    return self.request_encode_body(
+           ~~~~~~~~~~~~~~~~~~~~~~~~^
+        method, url, fields=fields, headers=headers, **urlopen_kw
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/seleniumbase/core/browser_launcher.py", line 490, in uc_open_with_reconnect
-    driver.execute_script(script)
-    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
-  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/webdriver.py", line 528, in execute_script
-    return self.execute(command, {"script": script, "args": converted_args})["value"]
-           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/webdriver.py", line 429, in execute
-    self.error_handler.check_response(response)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
-  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/selenium/webdriver/remote/errorhandler.py", line 232, in check_response
-    raise exception_class(message, screen, stacktrace)
-selenium.common.exceptions.NoSuchWindowException: Message: no such window: target window already closed
-from unknown error: web view not found
-  (Session info: chrome=133.0.6943.127)
-Stacktrace:
-0   uc_driver                           0x0000000103441d98 uc_driver + 5954968
-1   uc_driver                           0x00000001034399ca uc_driver + 5921226
-2   uc_driver                           0x0000000102ef95e0 uc_driver + 415200
-3   uc_driver                           0x0000000102ecd475 uc_driver + 234613
-4   uc_driver                           0x0000000102f795ae uc_driver + 939438
-5   uc_driver                           0x0000000102f97d4c uc_driver + 1064268
-6   uc_driver                           0x0000000102f70de3 uc_driver + 904675
-7   uc_driver                           0x0000000102f3cc6a uc_driver + 691306
-8   uc_driver                           0x0000000102f3ddc1 uc_driver + 695745
-9   uc_driver                           0x0000000103404e50 uc_driver + 5705296
-10  uc_driver                           0x0000000103408da0 uc_driver + 5721504
-11  uc_driver                           0x00000001033e6797 uc_driver + 5580695
-12  uc_driver                           0x000000010340982b uc_driver + 5724203
-13  uc_driver                           0x00000001033d4fc4 uc_driver + 5509060
-14  uc_driver                           0x0000000103428088 uc_driver + 5849224
-15  uc_driver                           0x000000010342824f uc_driver + 5849679
-16  uc_driver                           0x00000001034395a8 uc_driver + 5920168
-17  libsystem_pthread.dylib             0x00007ff8184f4253 _pthread_start + 99
-18  libsystem_pthread.dylib             0x00007ff8184efbef thread_start + 15
-
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/request.py", line 173, in request_encode_body
+    return self.urlopen(method, url, **extra_kw)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/poolmanager.py", line 376, in urlopen
+    response = conn.urlopen(method, u.request_uri, **kw)
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 830, in urlopen
+    return self.urlopen(
+           ~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        **response_kw
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 830, in urlopen
+    return self.urlopen(
+           ~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        **response_kw
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 830, in urlopen
+    return self.urlopen(
+           ~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        **response_kw
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 802, in urlopen
+    retries = retries.increment(
+        method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/opt/anaconda3/envs/usualenv/lib/python3.13/site-packages/urllib3/util/retry.py", line 594, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=63922): Max retries exceeded with url: /session/4bce42ff6a47adf0ad8ed858f626f73e/elements (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x12fd1f200>: Failed to establish a new connection: [Errno 61] Connection refused'))

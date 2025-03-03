@@ -1,0 +1,36 @@
+2025-03-03 19:11:06,808 - INFO - Found 6 URLs to process in test.csv
+2025-03-03 19:11:07,895 - INFO - Processing 1/6: https://indiankanoon.org/doc/16886299/
+2025-03-03 19:11:07,895 - INFO - Opening https://indiankanoon.org/doc/16886299/ with automatic reconnect to bypass Cloudflare...
+2025-03-03 19:11:11,201 - INFO - Successfully bypassed Cloudflare!
+2025-03-03 19:11:21,265 - ERROR - Error downloading PDF from https://indiankanoon.org/doc/16886299/: Message: 
+ Element {#printdoc} was not present after 10 seconds!
+
+2025-03-03 19:11:21,266 - WARNING - Failed to download PDF for https://indiankanoon.org/doc/16886299/
+2025-03-03 19:11:23,266 - INFO - Processing 2/6: https://indiankanoon.org/doc/62734135/
+2025-03-03 19:11:23,266 - INFO - Opening https://indiankanoon.org/doc/62734135/ with automatic reconnect to bypass Cloudflare...
+2025-03-03 19:11:26,590 - INFO - Successfully bypassed Cloudflare!
+2025-03-03 19:11:36,594 - ERROR - Error downloading PDF from https://indiankanoon.org/doc/62734135/: Message: 
+ Element {#printdoc} was not present after 10 seconds!
+
+2025-03-03 19:11:36,595 - WARNING - Failed to download PDF for https://indiankanoon.org/doc/62734135/
+2025-03-03 19:11:38,601 - INFO - Processing 3/6: https://indiankanoon.org/doc/57025830/
+2025-03-03 19:11:38,602 - INFO - Opening https://indiankanoon.org/doc/57025830/ with automatic reconnect to bypass Cloudflare...
+2025-03-03 19:11:41,919 - INFO - Successfully bypassed Cloudflare!
+2025-03-03 19:11:51,961 - ERROR - Error downloading PDF from https://indiankanoon.org/doc/57025830/: Message: 
+ Element {#printdoc} was not present after 10 seconds!
+
+2025-03-03 19:11:51,962 - WARNING - Failed to download PDF for https://indiankanoon.org/doc/57025830/
+2025-03-03 19:11:53,965 - INFO - Processing 4/6: https://indiankanoon.org/doc/44431547/
+2025-03-03 19:11:53,965 - INFO - Opening https://indiankanoon.org/doc/44431547/ with automatic reconnect to bypass Cloudflare...
+2025-03-03 19:11:57,284 - INFO - Successfully bypassed Cloudflare!
+2025-03-03 19:12:07,390 - ERROR - Error downloading PDF from https://indiankanoon.org/doc/44431547/: Message: 
+ Element {#printdoc} was not present after 10 seconds!
+
+2025-03-03 19:12:07,391 - WARNING - Failed to download PDF for https://indiankanoon.org/doc/44431547/
+2025-03-03 19:12:09,396 - INFO - Processing 5/6: https://indiankanoon.org/doc/36157353/
+2025-03-03 19:12:09,396 - INFO - Opening https://indiankanoon.org/doc/36157353/ with automatic reconnect to bypass Cloudflare...
+2025-03-03 19:12:12,751 - INFO - Successfully bypassed Cloudflare!
+2025-03-03 19:12:22,824 - ERROR - Error downloading PDF from https://indiankanoon.org/doc/36157353/: Message: 
+ Element {#printdoc} was not present after 10 seconds!
+
+2025-03-03 19:12:22,824 - WARNING - Failed to download PDF for https://indiankanoon.org/doc/36157353/

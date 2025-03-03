@@ -20,9 +20,9 @@
     "is_done": true
   },
   "Himachal Pradesh High Court": {
-    "last_year": 2022,
-    "last_month": "May",
-    "is_done": false
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
   },
   "Gauhati High Court": {
     "last_year": 2024,
@@ -31,7 +31,7 @@
   },
   "Gujarat High Court": {
     "last_year": 2023,
-    "last_month": "October",
+    "last_month": "December",
     "is_done": true
   },
   "Calcutta High Court - Appellate Side": {
@@ -44,9 +44,65 @@
     "last_month": "December",
     "is_done": true
   },
-  "Jharkhand High Court": {
+  "Karnataka High Court": {
     "last_year": 2021,
+    "last_month": "January",
+    "is_done": false
+  },
+  "Jammu & Kashmir High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Jammu & Kashmir High Court - Srinagar Bench": {
+    "last_year": 2023,
+    "last_month": "February",
+    "is_done": true
+  },
+  "Bombay High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Andhra Pradesh High Court - Amravati": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Jharkhand High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+ 
+  "Punjab-Haryana High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Madhya Pradesh High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Telangana High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Uttarakhand High Court": {
+    "last_year": 2020,
     "last_month": "September",
     "is_done": false
+  },
+  "Rajasthan High Court": {
+    "last_year": 2024,
+    "last_month": "December",
+    "is_done": true
+  },
+  "Supreme Court of India": {
+    "last_year": 2020,
+    "last_month": "January",
+    "is_done": true
   }
 }

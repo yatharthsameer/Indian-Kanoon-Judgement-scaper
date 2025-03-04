@@ -1,39 +1,37 @@
 import os
 import time
+import json
 import logging
-import base64
+import threading
 import pandas as pd
 import concurrent.futures
 from seleniumbase import SB  # pip install seleniumbase
 
 # -------------------------------------------------------------------
-# 1) HARDCODED LIST OF (CSV_FILE, OUTPUT_DIR) PAIRS
+# 1) HARDCODED LIST OF CSV FILES
 # -------------------------------------------------------------------
 CSV_FILES = [
-    ("Sikkim High Court.csv", "Sikkim_High_Court"),
-    ("Bombay High Court.csv", "Bombay_High_Court"),
-    ("Delhi High Court.csv", "Delhi_High_Court"),
-    ("Karnataka High Court.csv", "Karnataka_High_Court"),
-    ("Madras High Court.csv", "Madras_High_Court"),
-    ("Gujarat High Court.csv", "Gujarat_High_Court"),
-    # ("Calcutta High Court.csv", "Calcutta_High_Court"),
-    # ("Rajasthan High Court.csv", "Rajasthan_High_Court"),
-    # ("Patna High Court.csv", "Patna_High_Court"),
-    # ("Andhra Pradesh High Court.csv", "Andhra_Pradesh_High_Court"),
-    # ("Allahabad High Court.csv", "Allahabad_High_Court"),
-    # ("Punjab-Haryana High Court.csv", "Punjab_Haryana_High_Court"),
-    # ("Jharkhand High Court.csv", "Jharkhand_High_Court"),
-    # ("Kerala High Court.csv", "Kerala_High_Court"),
-    # ("Orissa High Court.csv", "Orissa_High_Court"),
-    # ("Chhattisgarh High Court.csv", "Chhattisgarh_High_Court"),
-    # ("Jammu-Kashmir High Court.csv", "Jammu_Kashmir_High_Court"),
-    # ("Himachal Pradesh High Court.csv", "Himachal_Pradesh_High_Court"),
-    # Add more as needed
+    "Sikkim High Court.csv",
+    "Bombay High Court.csv",
+    "Delhi High Court.csv",
+    "Karnataka High Court.csv",
+    "Madras High Court.csv",
+    "Gujarat High Court.csv",
+    # ... add more as needed
 ]
 
+# Specify the base output directory
+BASE_OUTPUT_DIR = "/Volumes/T7/data"
+
 HEADLESS = True  # Toggle headless mode
-MAX_RETRIES = 4  # Number of times to attempt bypassing Cloudflare
-MAX_THREADS = 6  # Maximum concurrent threads
+MAX_RETRIES = 4  # Times to attempt bypassing Cloudflare
+MAX_THREADS = 6  # Max concurrent threads
+
+# **Checkpoint file** where we store last-processed row index per CSV
+CHECKPOINT_FILE = "scraping_checkpoint_download.json"
+
+# A lock to prevent race conditions when multiple threads update the checkpoint
+checkpoint_lock = threading.Lock()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,19 +42,66 @@ logger = logging.getLogger(__name__)
 
 
 # -------------------------------------------------------------------
-# 2) HELPER FUNCTIONS (same as your single-thread code)
+# 2) CHECKPOINT UTILS
+# -------------------------------------------------------------------
+def get_checkpoint_value(csv_file: str) -> int:
+    """
+    Return the next row index to process for 'csv_file'
+    from the checkpoint JSON, or 0 if not present.
+    Thread-safe via checkpoint_lock.
+    """
+    with checkpoint_lock:
+        if not os.path.exists(CHECKPOINT_FILE):
+            return 0
+        try:
+            with open(CHECKPOINT_FILE, "r") as f:
+                data = json.load(f)
+                return data.get(csv_file, 0)
+        except (json.JSONDecodeError, ValueError):
+            logger.warning("Checkpoint file is corrupted or empty. Resetting to 0.")
+            return 0
+
+
+def update_checkpoint_value(csv_file: str, new_value: int):
+    """
+    Update the checkpoint so that 'csv_file' is recorded
+    as processed up to 'new_value' (the next row index to process).
+    Thread-safe via checkpoint_lock.
+    """
+    with checkpoint_lock:
+        # Load existing data (or start empty)
+        if os.path.exists(CHECKPOINT_FILE):
+            try:
+                with open(CHECKPOINT_FILE, "r") as f:
+                    data = json.load(f)
+            except (json.JSONDecodeError, ValueError):
+                logger.warning("Checkpoint file corrupted; re-initializing.")
+                data = {}
+        else:
+            data = {}
+
+        data[csv_file] = new_value
+
+        # Write back to JSON
+        with open(CHECKPOINT_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+
+
+# -------------------------------------------------------------------
+# 3) CLOUDFLARE-BYPASS & INTERACTION HELPERS
 # -------------------------------------------------------------------
 def open_kanoon_page(sb, url, max_retries=3):
-    """Tries up to 'max_retries' times to fully load the final doc page,
-    which we detect by waiting for some 'print' button or unique element."""
+    """
+    Opens the page with 'uc_open_with_reconnect()' up to 'max_retries' times,
+    checking for typical Cloudflare challenge elements.
+    """
     for attempt in range(1, max_retries + 1):
         logger.info(f"[Attempt {attempt}] Opening {url} with reconnect...")
         sb.uc_open_with_reconnect(url, 3)
 
-        # Give time for Cloudflare's "Verifying…" step
+        # Give time for Cloudflare's "Verifying..."
         time.sleep(3)
 
-        # Check for typical Cloudflare challenge elements
         if sb.is_element_visible('input[value*="Verify"]'):
             logger.info("Cloudflare: Found 'Verify' button, clicking...")
             sb.uc_click('input[value*="Verify"]')
@@ -68,7 +113,7 @@ def open_kanoon_page(sb, url, max_retries=3):
             sb.uc_gui_click_captcha()
             time.sleep(5)
 
-        # Poll up to 10s for the real doc's "print" button or link
+        # Check if we've actually reached the doc page
         found_it = False
         for _ in range(10):
             if (
@@ -97,7 +142,10 @@ def open_kanoon_page(sb, url, max_retries=3):
 
 
 def click_print_button(sb):
-    """Attempts to click the 'Print it on a file/printer' button/link."""
+    """
+    Optionally click the 'Print it on a file/printer' link to load a 'printer-friendly' page.
+    If not found, we simply proceed.
+    """
     try:
         if sb.is_element_visible("[devinid='10']"):
             logger.info("Clicking element with devinid='10'...")
@@ -115,14 +163,6 @@ def click_print_button(sb):
             logger.info("Clicking 'Print it on a file/printer' link (XPath)...")
             sb.click("//a[contains(text(), 'Print it on a file/printer')]")
             return True
-        elif sb.is_element_visible("button:contains('Print it on a file/printer')"):
-            logger.info("Clicking 'Print it on a file/printer' button (CSS)...")
-            sb.click("button:contains('Print it on a file/printer')")
-            return True
-        elif sb.is_element_visible("a:contains('Print it on a file/printer')"):
-            logger.info("Clicking 'Print it on a file/printer' link (CSS)...")
-            sb.click("a:contains('Print it on a file/printer')")
-            return True
         else:
             logger.warning("No 'Print it on a file/printer' button/link found.")
             return False
@@ -131,114 +171,113 @@ def click_print_button(sb):
         return False
 
 
-def save_as_pdf(sb, pdf_path):
-    """Saves the current page as a PDF using Chrome's DevTools Protocol."""
+def save_as_html(sb, html_path):
+    """
+    Saves the current page's HTML source to 'html_path'.
+    """
     try:
-        logger.info(f"Saving PDF => {pdf_path}")
-        time.sleep(5)  # Wait for the print view to fully load
-
-        pdf_data = sb.driver.execute_cdp_cmd(
-            "Page.printToPDF",
-            {
-                "printBackground": True,
-                "paperWidth": 8.5,
-                "paperHeight": 11,
-                "marginTop": 0.4,
-                "marginBottom": 0.4,
-                "marginLeft": 0.4,
-                "marginRight": 0.4,
-                "scale": 0.9,
-            },
-        )
-
-        with open(pdf_path, "wb") as f:
-            f.write(base64.b64decode(pdf_data["data"]))
-
-        logger.info(f"Saved {pdf_path} successfully.")
+        logger.info(f"Saving HTML => {html_path}")
+        time.sleep(3)  # brief pause, ensuring the page is fully loaded
+        page_source = sb.get_page_source()
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(page_source)
+        logger.info(f"Saved HTML: {html_path}")
         return True
     except Exception as e:
-        logger.error(f"Error saving PDF: {e}")
+        logger.error(f"Error saving HTML: {e}")
         return False
 
 
 # -------------------------------------------------------------------
-# 3) FUNCTION TO PROCESS A SINGLE CSV FILE (runs in one thread)
+# 4) THREAD FUNCTION: Process a Single CSV
 # -------------------------------------------------------------------
-def process_csv(csv_file, output_dir):
-    """Reads `csv_file`, scrapes each URL, and saves PDFs into `output_dir`."""
-    try:
-        if not os.path.exists(csv_file):
-            logger.error(f"CSV file not found: {csv_file}")
-            return
+def process_csv(csv_file):
+    """
+    Reads `csv_file`, uses the global checkpoint to resume from last known row,
+    and for each row:
+      - Open page & bypass Cloudflare
+      - Optionally click "Print it on a file/printer"
+      - Save final HTML
+      - Update checkpoint to row_idx+1
+    """
+    if not os.path.exists(csv_file):
+        logger.error(f"CSV file not found: {csv_file}")
+        return
 
-        os.makedirs(output_dir, exist_ok=True)
-        df = pd.read_csv(csv_file)
+    df = pd.read_csv(csv_file)
+    total_rows = len(df)
+    logger.info(f"[{csv_file}] has {total_rows} total rows.")
 
-        logger.info(f"Starting processing for {csv_file} -> {output_dir}")
-        with SB(uc=True, headless=HEADLESS) as sb:
-            for idx, row in df.iterrows():
-                court = str(row["court"])
-                year = str(row["year"])
-                month = str(row["month"])[:3]  # e.g. "Dec"
-                url = str(row["url"])
+    # Read the current checkpoint for this CSV
+    start_idx = get_checkpoint_value(csv_file)
+    if start_idx >= total_rows:
+        logger.info(f"[{csv_file}] Already completed all {total_rows} rows. Skipping.")
+        return
 
-                doc_id = url.rstrip("/").split("/")[-1]
-                pdf_filename = f"{court}_{year}_{month}_{doc_id}.pdf".replace(" ", "_")
-                pdf_path = os.path.join(output_dir, pdf_filename)
+    logger.info(f"[{csv_file}] Resuming from row index {start_idx} (0-based).")
 
-                logger.info(f"\n--- Processing: {court}, {year}, {month}, {url} ---")
-                try:
-                    if not open_kanoon_page(sb, url, max_retries=MAX_RETRIES):
-                        logger.error(
-                            f"Skipping {url} due to Cloudflare/page load failure"
-                        )
-                        continue
+    # For the directory structure, we won't create them all here.
+    # We'll create them row-by-row as needed: BASE_OUTPUT_DIR/court/year/month/
+    with SB(uc=True, headless=HEADLESS) as sb:
+        for row_idx in range(start_idx, total_rows):
+            row = df.iloc[row_idx]
 
-                    if not click_print_button(sb):
-                        logger.error(
-                            f"Skipping {url} due to print button click failure"
-                        )
-                        continue
+            court = str(row["court"]).strip()
+            year = str(row["year"]).strip()
+            month = str(row["month"]).strip()
+            url = str(row["url"]).strip()
 
-                    if not save_as_pdf(sb, pdf_path):
-                        logger.error(f"Skipping {url} due to PDF save failure")
-                        continue
+            doc_id = url.rstrip("/").split("/")[-1]
 
-                    logger.info(f"Successfully processed {url}")
+            # Build subdirectory: <base>/<court>/<year>/<month>
+            court_dir = os.path.join(BASE_OUTPUT_DIR, court)
+            year_dir = os.path.join(court_dir, year)
+            month_dir = os.path.join(year_dir, month)
+            os.makedirs(month_dir, exist_ok=True)
 
-                except Exception as ex:
-                    logger.error(f"ERROR processing {url}: {ex}")
+            html_filename = f"{doc_id}.html"
+            html_path = os.path.join(month_dir, html_filename)
 
-        logger.info(f"Finished processing for {csv_file}")
+            logger.info(f"\n[{csv_file}] Row {row_idx+1}/{total_rows}: {url}")
+            logger.info(f"Saving to => {html_path}")
 
-    except Exception as e:
-        logger.error(f"Unexpected error in thread for {csv_file}: {e}")
+            try:
+                # 1) Bypass Cloudflare
+                if not open_kanoon_page(sb, url, max_retries=MAX_RETRIES):
+                    logger.error(f"Skipping {url} (Cloudflare/page load failure)")
+                else:
+                    # 2) Click "Print it on a file/printer" if found
+                    clicked = click_print_button(sb)
+                    # 3) Save HTML
+                    if not save_as_html(sb, html_path):
+                        logger.error(f"Skipping {url} due to HTML save failure")
+                    else:
+                        logger.info(f"Successfully saved HTML for {url}")
+
+            except Exception as ex:
+                logger.error(f"ERROR processing {url}: {ex}")
+
+            # IMPORTANT: Update checkpoint so we don't re-download on restart
+            update_checkpoint_value(csv_file, row_idx + 1)
+
+    logger.info(f"[{csv_file}] Completed up to row {row_idx+1}")
 
 
 # -------------------------------------------------------------------
-# 4) MAIN FUNCTION: LAUNCH THREADS WITH A 5-SECOND STAGGER
+# 5) MAIN: Launch Threads with 5-Second Stagger
 # -------------------------------------------------------------------
 def main():
-    # List of (csv_file, output_dir) to process
-    csv_files = [
-        ("Sikkim High Court.csv", "Sikkim_High_Court"),
-        ("Bombay High Court.csv", "Bombay_High_Court"),
-        ("Delhi High Court.csv", "Delhi_High_Court"),
-        # etc.
-    ]
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         futures = []
-        for csv_file, out_dir in csv_files:
-            # Submit a thread to process this CSV
-            futures.append(executor.submit(process_csv, csv_file, out_dir))
-            # Stagger the thread starts by sleeping 5 seconds before the next
+        for csv_file in CSV_FILES:
+            future = executor.submit(process_csv, csv_file)
+            futures.append(future)
+            # Stagger the thread starts by 5 seconds
             time.sleep(5)
 
-        # Optionally wait for them to complete
-        for future in concurrent.futures.as_completed(futures):
+        for f in concurrent.futures.as_completed(futures):
             try:
-                future.result()  # Raises any exception from process_csv()
+                f.result()
             except Exception as exc:
                 logger.error(f"A thread encountered an exception: {exc}")
 

@@ -1,25 +1,30 @@
 import os
-import time
 import json
+import time
 import logging
 import threading
-import pandas as pd
-from urllib.parse import urljoin
+from datetime import datetime, timedelta
+from urllib.parse import quote_plus
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from seleniumbase import SB  # or "from seleniumbase import BaseCase" if needed
+
+import pandas as pd
+from seleniumbase import SB
+
+# ----------------------- Global Settings ----------------------- #
+START_YEAR = 2024  # <=== change this at will
+END_YEAR = 2024  # scrape up to this year (inclusive)
+INTERVAL_DAYS = 3  # 3‑day windows (1,2,3) – increase if desired
+MAX_WORKERS = 1  # parallel courts
+
+COURT_CSV = "court_links.csv"  # must contain a column named "court_id"
+CHECKPOINT_FILE = "date_scraper_checkpoint.json"
+LOG_FILE = "date_scraper.log"
+
+# ---------------------------------------------------------------- #
 
 
-class IndianKanoonScraper:
-    def __init__(self, start_year=2020, end_year=2024, max_workers=4):
-        self.start_year = start_year
-        self.end_year = end_year
-        self.checkpoint_file = "scraping_checkpoint.json"
-        self.setup_logging()
-
-        # A threading lock to protect read/write to the checkpoint
-        self.checkpoint_lock = threading.Lock()
-        self.max_workers = max_workers
-
+class DateRangeScraper:
+    def __init__(self):
         self.month_names = [
             "January",
             "February",
@@ -34,283 +39,179 @@ class IndianKanoonScraper:
             "November",
             "December",
         ]
+        self._setup_logging()
+        self.check_lock = threading.Lock()
 
-    def setup_logging(self):
-        """Setup logging configuration."""
+    # --------------- Logging & Checkpoint helpers --------------- #
+    def _setup_logging(self):
         logging.basicConfig(
             level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
         )
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger("scraper")
 
-    def load_checkpoint(self):
-        """Thread-safe load of the checkpoint file, returning a dict keyed by court."""
-        with self.checkpoint_lock:
-            if (
-                not os.path.exists(self.checkpoint_file)
-                or os.stat(self.checkpoint_file).st_size == 0
-            ):
+    def _load_checkpoint(self):
+        with self.check_lock:
+            if not os.path.isfile(CHECKPOINT_FILE):
                 return {}
             try:
-                with open(self.checkpoint_file, "r") as f:
+                with open(CHECKPOINT_FILE, "r") as f:
                     return json.load(f)
-            except (json.JSONDecodeError, ValueError):
-                self.logger.warning(
-                    "Checkpoint file is empty/corrupted. Resetting checkpoint."
-                )
+            except Exception:
+                self.logger.warning("Checkpoint corrupt – starting fresh")
                 return {}
 
-    def save_checkpoint(self, checkpoint_data):
-        """Thread-safe save of the entire checkpoint dictionary."""
-        with self.checkpoint_lock:
-            with open(self.checkpoint_file, "w") as f:
-                json.dump(checkpoint_data, f, indent=2)
+    def _save_checkpoint(self, data):
+        with self.check_lock:
+            with open(CHECKPOINT_FILE, "w") as f:
+                json.dump(data, f, indent=2)
 
-    def bypass_cloudflare(self, sb, url):
-        """Handle Cloudflare verification with multiple reconnect attempts."""
-        self.logger.info(
-            f"Opening {url} with automatic reconnect to bypass Cloudflare..."
-        )
+    # ---------------- Cloudflare bypass ----------------- #
+    def _bypass_cloudflare(self, sb, url):
+        self.logger.info(f"Opening {url}")
         sb.uc_open_with_reconnect(url, 3)
-
+        # Quick success check
+        for _ in range(10):
+            if "indiankanoon.org" in sb.get_current_url():
+                return
+            time.sleep(1)
+        # Fallback – try clicking verify
         try:
-            for _ in range(10):
-                if "indiankanoon.org" in sb.get_current_url():
-                    self.logger.info("Successfully bypassed Cloudflare!")
-                    return
-                time.sleep(1)
-
-            # Attempt direct verification steps
             if sb.is_element_visible('input[value*="Verify"]'):
-                self.logger.info("Clicking Cloudflare verification checkbox...")
                 sb.uc_click('input[value*="Verify"]')
-                time.sleep(5)
+                time.sleep(4)
             elif sb.is_element_visible("iframe"):
-                self.logger.info("Detected an iframe, solving CAPTCHA...")
                 sb.uc_gui_click_captcha()
-                time.sleep(5)
+                time.sleep(6)
+        except Exception:
+            pass
 
-            sb.wait_for_element_visible('img[alt="Indian Kanoon"]', timeout=15)
-            self.logger.info("Page loaded successfully after Cloudflare verification.")
-
-        except Exception as e:
-            self.logger.error(f"Cloudflare detection failed: {str(e)}")
-            raise Exception("Cloudflare detected the bot!") from e
-
-    def get_month_links(self, sb):
-        """Extract month links from the page."""
-        months = []
-        for link in sb.find_elements("tag name", "a"):
-            text = link.text.strip()
-            if text in self.month_names:
-                months.append({"name": text, "url": link.get_attribute("href")})
-        return months
-
-    def save_links_batch(self, links, csv_file):
-        """Append a batch of links to the court-specific CSV file."""
+    # ---------------- CSV Saving ----------------- #
+    def _save_links(self, links, csv_path):
         if not links:
             return
         df = pd.DataFrame(links)
-        write_header = not os.path.exists(csv_file)
-        df.to_csv(csv_file, mode="a", header=write_header, index=False)
-        self.logger.info(f"Saved {len(links)} links to {csv_file}")
+        header = not os.path.isfile(csv_path)
+        df.to_csv(csv_path, mode="a", header=header, index=False)
+        self.logger.info(f"Saved {len(links)} links -> {csv_path}")
 
-    def process_month_page(self, sb, month_data, court_name, year, csv_file):
-        """Process all judgment links for a month, paginating until no 'Next' link."""
-        self.logger.info(f"[{court_name}] Processing {month_data['name']} {year}...")
-        current_url = month_data["url"]
-        month_links = []
+    # --------------- Core scraping utilities --------------- #
+    @staticmethod
+    def _fmt_date(dt: datetime) -> str:
+        """Return D-M-YYYY (no leading zeros) as IK expects."""
+        return f"{dt.day}-{dt.month}-{dt.year}"
 
-        while current_url:
+    def _build_search_url(
+        self, court_id: str, from_dt: datetime, to_dt: datetime
+    ) -> str:
+        q = f"doctypes:{court_id} fromdate:{self._fmt_date(from_dt)} todate: {self._fmt_date(to_dt)}"
+        return f"https://indiankanoon.org/search/?formInput={quote_plus(q)}"
+
+    def _scrape_interval(
+        self, sb, court_id: str, from_dt: datetime, to_dt: datetime, csv_path: str
+    ):
+        url = self._build_search_url(court_id, from_dt, to_dt)
+        self.logger.info(
+            f"[{court_id}] {self._fmt_date(from_dt)} → {self._fmt_date(to_dt)} | {url}"
+        )
+        self._bypass_cloudflare(sb, url)
+
+        links_batch = []
+        while True:
             try:
-                sb.get(current_url)
-                self.logger.info(
-                    f"[{court_name}] Loaded {month_data['name']} {year} page."
-                )
-
-                # Collect doc links
-                links_this_page = []
-                for element in sb.find_elements("tag name", "a"):
-                    href = element.get_attribute("href")
-                    text = element.text.strip()
-                    if "/doc/" in href and text:
-                        links_this_page.append(
+                # Collect links on current page
+                for a in sb.find_elements("tag name", "a"):
+                    href = a.get_attribute("href")
+                    if href and "/doc/" in href:
+                        title = a.text.strip()
+                        if not title:
+                            continue
+                        yr = from_dt.year
+                        month = self.month_names[from_dt.month - 1]
+                        links_batch.append(
                             {
-                                "court": court_name,
-                                "year": year,
-                                "month": month_data["name"],
-                                "title": text,
+                                "court": court_id,
+                                "year": yr,
+                                "month": month,
+                                "title": title,
                                 "url": href,
                             }
                         )
+                if len(links_batch) >= 100:
+                    self._save_links(links_batch, csv_path)
+                    links_batch = []
 
-                if links_this_page:
-                    month_links.extend(links_this_page)
-                    self.logger.info(
-                        f"[{court_name}] Found {len(links_this_page)} links on this page."
-                    )
-                    # Save in batches of 100
-                    if len(month_links) >= 100:
-                        self.save_links_batch(month_links, csv_file)
-                        month_links = []
-
-                # Find "Next" link
-                next_page = None
-                for link in sb.find_elements("tag name", "a"):
-                    if link.text.strip().lower() == "next":
-                        next_page = link.get_attribute("href")
+                # pagination
+                next_link = None
+                for a in sb.find_elements("tag name", "a"):
+                    if a.text.strip().lower() == "next":
+                        next_link = a.get_attribute("href")
                         break
-
-                if next_page:
-                    current_url = next_page
-                    time.sleep(2)
+                if next_link:
+                    sb.get(next_link)
+                    time.sleep(1)
                 else:
-                    # Save leftover links
-                    if month_links:
-                        self.save_links_batch(month_links, csv_file)
-                    current_url = None
-
+                    break
             except Exception as e:
-                self.logger.error(
-                    f"[{court_name}] Error in month {month_data['name']} {year}: {str(e)}"
-                )
-                if month_links:
-                    self.save_links_batch(month_links, csv_file)
+                self.logger.error(f"[{court_id}] error during page scrape: {e}")
                 break
+        # final flush
+        self._save_links(links_batch, csv_path)
 
-    def scrape_court(self, court_data):
-        """
-        Scrape all years/months for a single court in one thread.
-        Creates/updates a CSV named <court_name>.csv
-        Updates checkpoint as we go.
-        """
-        court_name = court_data["court"]
-        court_url = court_data["url"]
-        csv_file = f"{court_name}.csv"
+    # --------------- Per‑court worker --------------- #
+    def _worker(self, court_id: str):
+        csv_path = f"{court_id}.csv"
+        cp = self._load_checkpoint()
+        last_date_str = cp.get(court_id, {}).get("last_from_date")
+        if last_date_str:
+            start_dt = datetime.strptime(last_date_str, "%Y-%m-%d") + timedelta(
+                days=INTERVAL_DAYS
+            )
+        else:
+            start_dt = datetime(START_YEAR, 1, 1)
+        end_dt_global = datetime(END_YEAR, 12, 31)
 
-        # Load checkpoint for this court
-        checkpoint_data = self.load_checkpoint()
-        if court_name not in checkpoint_data:
-            checkpoint_data[court_name] = {
-                "last_year": None,
-                "last_month": None,
-                "is_done": False,
-            }
+        with SB(uc=True, headless=False) as sb:
+            cur = start_dt
+            while cur <= end_dt_global:
+                to_dt = cur + timedelta(days=INTERVAL_DAYS - 1)
+                if to_dt > end_dt_global:
+                    to_dt = end_dt_global
+                try:
+                    self._scrape_interval(sb, court_id, cur, to_dt, csv_path)
+                    # checkpoint update
+                    cp.setdefault(court_id, {})["last_from_date"] = cur.strftime(
+                        "%Y-%m-%d"
+                    )
+                    self._save_checkpoint(cp)
+                except Exception as ex:
+                    self.logger.error(f"[{court_id}] critical interval error: {ex}")
+                    break
+                cur += timedelta(days=INTERVAL_DAYS)
+        self.logger.info(f"[{court_id}] done up to {end_dt_global.date()}")
 
-        court_checkpoint = checkpoint_data[court_name]
-        if court_checkpoint.get("is_done", False):
-            self.logger.info(f"[{court_name}] Already marked done. Skipping.")
-            return
+    # --------------- Orchestrator --------------- #
+    def run(self):
+        courts_df = pd.read_csv(COURT_CSV)  # must have court_id column
+        if "court_id" not in courts_df.columns:
+            raise ValueError("courts.csv must contain a 'court_id' column")
+        court_ids = courts_df["court_id"].unique().tolist()
+        self.logger.info(f"Loaded {len(court_ids)} courts. Starting threads …")
 
-        last_year = court_checkpoint["last_year"]
-        last_month = court_checkpoint["last_month"]
-
+        pool = ThreadPoolExecutor(max_workers=MAX_WORKERS)
+        futures = [pool.submit(self._worker, cid) for cid in court_ids]
         try:
-            with SB(uc=True) as sb:
-                for year in range(self.start_year, self.end_year + 1):
-                    # Skip entire years < last_year
-                    if last_year is not None and year < last_year:
-                        continue
-
-                    # Bypass Cloudflare and fetch month links
-                    year_url = urljoin(court_url, f"{year}/")
-                    self.bypass_cloudflare(sb, year_url)
-                    month_links = self.get_month_links(sb)
-                    if not month_links:
-                        self.logger.warning(
-                            f"[{court_name}] No months found for year {year}. Skipping."
-                        )
-                        continue
-
-                    # Figure out which month index to start from if continuing partial year
-                    start_month_idx = 0
-                    if last_year == year and last_month in self.month_names:
-                        skip_idx = self.month_names.index(last_month)
-                        start_month_idx = skip_idx + 1
-                        if start_month_idx > 11:
-                            # We already finished this entire year
-                            continue
-
-                    # Process months from start_month_idx onward
-                    for mdata in month_links[start_month_idx:]:
-                        self.process_month_page(sb, mdata, court_name, year, csv_file)
-                        # Update checkpoint after finishing each month
-                        court_checkpoint["last_year"] = year
-                        court_checkpoint["last_month"] = mdata["name"]
-                        self.save_checkpoint(checkpoint_data)
-                        last_year = year
-                        last_month = mdata["name"]
-
-                # Mark done once we've processed all years
-                court_checkpoint["is_done"] = True
-                self.save_checkpoint(checkpoint_data)
-                self.logger.info(f"[{court_name}] Scraping complete.")
-
-        except Exception as ex:
-            self.logger.error(f"[{court_name}] Critical error: {str(ex)}")
-
-
-    def scrape_all(self):
-        """
-        Main scraping function:
-        1) Read 'court_links.csv'
-        2) Load checkpoint
-        3) Filter out courts that are is_done == True (to avoid pointless tasks)
-        4) Spawn up to self.max_workers threads
-        5) Handle Ctrl+C (KeyboardInterrupt) gracefully
-        """
-
-        # 1. Read the court links
-        courts_df = pd.read_csv("court_links.csv")
-
-        # 2. Load the checkpoint to see which courts are done
-        checkpoint_data = self.load_checkpoint()
-
-        # 3. Filter out or tag "is_done" courts
-        def is_done_for_row(row):
-            c_name = row["court"]
-            if c_name not in checkpoint_data:
-                return False
-            return checkpoint_data[c_name].get("is_done", False)
-
-        courts_df["is_done"] = courts_df.apply(is_done_for_row, axis=1)
-
-        # We'll keep only undone courts, so we never schedule tasks for done ones:
-        undone_df = courts_df[courts_df["is_done"] == False]
-
-        self.logger.info(
-            f"Total Courts: {len(courts_df)}. "
-            f"Undone: {len(undone_df)}, "
-            f"Done: {len(courts_df) - len(undone_df)}"
-        )
-
-        # 4. Spawn threads
-        executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        futures = []
-        try:
-            # Schedule tasks only for undone courts
-            for _, row in undone_df.iterrows():
-                future = executor.submit(self.scrape_court, row)
-                futures.append(future)
-                time.sleep(5)
-
-            # As tasks complete, catch exceptions
             for f in as_completed(futures):
-                f.result()  # Will re-raise any uncaught exception inside scrape_court()
-
+                f.result()
         except KeyboardInterrupt:
-            self.logger.info("CTRL+C detected! Attempting graceful shutdown...")
-            # Cancel any tasks that are still queued or running
+            self.logger.info("CTRL‑C detected – shutting down …")
             for f in futures:
                 f.cancel()
-
         finally:
-            # 5. Shutdown the executor
-            executor.shutdown(wait=False)
-            self.logger.info("Shutdown complete. Checkpoints should be up to date.")
+            pool.shutdown(wait=False)
+            self.logger.info("All workers finished.")
 
 
 if __name__ == "__main__":
-    scraper = IndianKanoonScraper(start_year=2020, end_year=2024, max_workers=4)
-    scraper.scrape_all()
+    DateRangeScraper().run()

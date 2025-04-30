@@ -11,13 +11,44 @@ from seleniumbase import SB  # pip install seleniumbase
 # 1) HARDCODED LIST OF CSV FILES
 # -------------------------------------------------------------------
 CSV_FILES = [
-    "Sikkim High Court.csv",
-    "Bombay High Court.csv",
-    "Delhi High Court.csv",
-    "Karnataka High Court.csv",
-    "Madras High Court.csv",
-    "Gujarat High Court.csv",
-    # ... add more as needed
+    # "Sikkim High Court.csv",
+    # "Bombay High Court.csv",
+    # "Delhi High Court.csv",
+    # "Karnataka High Court.csv",
+    # "Madras High Court.csv",
+    # "Gujarat High Court.csv",
+    # "Allahabad High Court.csv",
+    # "Andhra Pradesh High Court - Amravati.csv",
+    # # "Bombay High Court.csv",
+    # "Calcutta High Court - Appellate Side.csv",
+    # "Calcutta High Court.csv",
+    # "Chattisgarh High Court.csv",
+    # "Delhi High Court - Orders.csv",
+    # "Delhi High Court.csv",
+    # "Gauhati High Court.csv",
+    # "Gujarat High Court.csv",
+    # "Himachal Pradesh High Court.csv",
+    # "Jammu & Kashmir High Court - Srinagar Bench.csv",
+    # "Jammu & Kashmir High Court.csv",
+    # "Jharkhand High Court.csv",
+    # # "Karnataka High Court.csv",
+    "Kerala High Court.csv",
+    "Madhya Pradesh High Court.csv",
+    # # "Madras High Court.csv",
+    "Manipur High Court.csv",
+    "Meghalaya High Court.csv",
+    "Orissa High Court.csv",
+    "Patna High Court - Orders.csv",
+    "Patna High Court.csv",
+    # "Punjab-Haryana High Court.csv",
+    # "Rajasthan High Court - Jaipur.csv",
+    # "Rajasthan High Court - Jodhpur.csv",
+    # "Sikkim High Court.csv",
+    # "Supreme Court - Daily Orders.csv",
+    # "Supreme Court of India.csv",
+    # "Telangana High Court.csv",
+    # "Tripura High Court.csv",
+    # "Uttarakhand High Court.csv",
 ]
 
 # Specify the base output directory
@@ -25,7 +56,7 @@ BASE_OUTPUT_DIR = "/Volumes/T7/data"
 
 HEADLESS = True  # Toggle headless mode
 MAX_RETRIES = 4  # Times to attempt bypassing Cloudflare
-MAX_THREADS = 6  # Max concurrent threads
+MAX_THREADS = 4 # Max concurrent threads
 
 # **Checkpoint file** where we store last-processed row index per CSV
 CHECKPOINT_FILE = "scraping_checkpoint_download.json"
